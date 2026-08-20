@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: homeasset-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: USE_MEMORY_DB
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: DEMO_EMAIL
+        value: demo@homeasset.com
+      - key: DEMO_PASSWORD
+        value: Demo@123
