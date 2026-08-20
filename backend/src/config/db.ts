@@ -10,6 +10,10 @@ export async function connectDatabase(): Promise<void> {
     const { MongoMemoryServer } = await import("mongodb-memory-server");
     memoryServer = await MongoMemoryServer.create({
       instance: { dbName: "homeasset" },
+      // mongodb-memory-server defaults to MongoDB 6.0.x, but MongoDB only
+      // ships binaries for Debian 12+ (used by Render's Node runtime, among
+      // others) starting at 7.0.3 - pin to a compatible 7.0.x release.
+      binary: { version: "7.0.14" },
     });
     uri = memoryServer.getUri("homeasset");
     console.log("[db] Started in-memory MongoDB instance for this session");
