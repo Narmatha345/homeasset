@@ -139,7 +139,7 @@ export function CalendarPage() {
           <h1 className="text-xl font-semibold text-slate-900">Calendar</h1>
           <p className="text-sm text-slate-500 mt-0.5">Scheduled maintenance and service order requests across all assets.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => goToMonth(-1)} aria-label="Previous month">
             <ChevronLeft className="h-4 w-4" />
           </Button>

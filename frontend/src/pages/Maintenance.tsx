@@ -148,14 +148,17 @@ export function Maintenance() {
                 </div>
                 <ul className="divide-y divide-slate-100">
                   {section.items.map((item) => (
-                    <li key={item.assetId + item.dueDate} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+                    <li
+                      key={item.assetId + item.dueDate}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3.5"
+                    >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-900 truncate">{item.assetName}</p>
                         <p className="text-xs text-slate-500">
                           {item.assetCode} &middot; {item.location} &middot; {item.maintenanceType}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                         <span className="text-xs text-slate-500">{formatDate(item.dueDate)}</span>
                         <PriorityBadge priority={item.priority} />
                         <MaintenanceStatusBadge status={item.status} />
