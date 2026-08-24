@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Boxes, CalendarClock, AlertOctagon, ClipboardList, Loader2, CheckCircle2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
+import { Boxes, CalendarClock, AlertOctagon, ClipboardList, Timer, CheckCircle2 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, LabelList } from "recharts";
 import { dashboardApi } from "../api/dashboardApi";
 import type { DashboardSummary, UpcomingMaintenanceItem, ServiceRecord, ServiceOrder } from "../types";
 import { StatCard } from "../components/dashboard/StatCard";
@@ -58,16 +58,16 @@ export function Dashboard() {
     { key: "asset", header: "Asset", render: (r) => <span className="font-medium text-slate-900">{r.assetName}</span> },
     { key: "location", header: "Location", render: (r) => r.location },
     { key: "service", header: "Service", render: (r) => r.maintenanceType },
-    { key: "due", header: "Due Date", render: (r) => formatDate(r.dueDate) },
+    { key: "due", header: "Due Date", className: "whitespace-nowrap", render: (r) => formatDate(r.dueDate) },
     { key: "status", header: "Status", render: (r) => <MaintenanceStatusBadge status={r.status} /> },
     {
       key: "actions",
       header: "",
       hideOnMobile: true,
+      className: "whitespace-nowrap",
       render: (r) => (
         <Button
           size="sm"
-          variant="outline"
           onClick={(e) => {
             e.stopPropagation();
             const params = new URLSearchParams({
@@ -91,22 +91,31 @@ export function Dashboard() {
         <p className="text-sm text-slate-500 mt-0.5">Overview of your home assets, maintenance, and service orders.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Assets" value={summary?.totalAssets ?? 0} icon={Boxes} tone="indigo" trend="Across all rooms" />
-        <StatCard
-          label="Upcoming Maintenance"
-          value={summary?.servicesDueThisMonth ?? 0}
-          icon={CalendarClock}
-          tone="amber"
-          trend="Due this month"
-        />
-        <StatCard label="Overdue Maintenance" value={summary?.overdueServices ?? 0} icon={AlertOctagon} tone="red" trend="Needs attention" />
-        <StatCard label="Open Service Orders" value={summary?.openServiceOrders ?? 0} icon={ClipboardList} tone="indigo" trend="Awaiting work" />
-        <StatCard label="In Progress Orders" value={summary?.inProgressServiceOrders ?? 0} icon={Loader2} tone="amber" trend="Being worked on" />
-        <StatCard label="Completed Orders" value={summary?.completedServiceOrders ?? 0} icon={CheckCircle2} tone="emerald" trend="Resolved" />
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Assets &amp; Maintenance</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatCard label="Total Assets" value={summary?.totalAssets ?? 0} icon={Boxes} tone="indigo" trend="Across all rooms" />
+          <StatCard
+            label="Upcoming Maintenance"
+            value={summary?.servicesDueThisMonth ?? 0}
+            icon={CalendarClock}
+            tone="amber"
+            trend="Due this month"
+          />
+          <StatCard label="Overdue Maintenance" value={summary?.overdueServices ?? 0} icon={AlertOctagon} tone="red" trend="Needs attention" />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Service Orders</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatCard label="Open" value={summary?.openServiceOrders ?? 0} icon={ClipboardList} tone="indigo" trend="Awaiting work" />
+          <StatCard label="In Progress" value={summary?.inProgressServiceOrders ?? 0} icon={Timer} tone="amber" trend="Being worked on" />
+          <StatCard label="Completed" value={summary?.completedServiceOrders ?? 0} icon={CheckCircle2} tone="emerald" trend="Resolved" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Upcoming Maintenance</CardTitle>
@@ -164,7 +173,7 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Overdue Maintenance</CardTitle>
@@ -231,7 +240,9 @@ export function Dashboard() {
                   <XAxis dataKey="location" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{ fill: "#f1f5f9" }} contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0", fontSize: 13 }} />
-                  <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                  <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                    <LabelList dataKey="count" position="top" style={{ fill: "#475569", fontSize: 12, fontWeight: 600 }} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
