@@ -28,6 +28,7 @@ export interface IAsset extends Omit<Document, "model"> {
   purchasePrice?: number;
   warrantyExpiry?: Date;
   maintenanceFrequency: MaintenanceFrequency;
+  customFrequencyDays?: number;
   lastServiceDate?: Date;
   nextServiceDate?: Date;
   notes?: string;
@@ -51,6 +52,7 @@ const assetSchema = new Schema<IAsset>(
     purchasePrice: { type: Number },
     warrantyExpiry: { type: Date },
     maintenanceFrequency: { type: String, enum: MAINTENANCE_FREQUENCIES, default: "Every 6 Months" },
+    customFrequencyDays: { type: Number },
     lastServiceDate: { type: Date },
     nextServiceDate: { type: Date },
     notes: { type: String, trim: true },

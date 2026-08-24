@@ -3,9 +3,8 @@ import type { Asset, AssetStatus, MaintenanceFrequency } from "../types";
 
 export interface AssetInput {
   name: string;
-  assetId?: string;
   category: string;
-  brand?: string;
+  brand: string;
   model?: string;
   serialNumber?: string;
   status: AssetStatus;
@@ -15,6 +14,7 @@ export interface AssetInput {
   purchasePrice?: number;
   warrantyExpiry?: string;
   maintenanceFrequency: MaintenanceFrequency;
+  customFrequencyDays?: number;
   lastServiceDate?: string;
   nextServiceDate?: string;
   notes?: string;

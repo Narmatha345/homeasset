@@ -4,6 +4,7 @@ import { House } from "../models/House";
 import { Location } from "../models/Location";
 import { Asset } from "../models/Asset";
 import { ServiceRecord } from "../models/ServiceRecord";
+import { ServiceOrder } from "../models/ServiceOrder";
 import { env } from "../config/env";
 
 function daysFromNow(days: number): Date {
@@ -54,7 +55,7 @@ export async function seedDatabase(): Promise<void> {
   const assetDefs = [
     {
       name: "LG Split AC",
-      assetId: "AST-00001",
+      assetId: "AST-0001",
       category: "Air Conditioner",
       brand: "LG",
       model: "LS-Q18YNZA",
@@ -71,7 +72,7 @@ export async function seedDatabase(): Promise<void> {
     },
     {
       name: "Samsung Refrigerator",
-      assetId: "AST-00002",
+      assetId: "AST-0002",
       category: "Refrigerator",
       brand: "Samsung",
       model: "RT42B5J58SL",
@@ -88,7 +89,7 @@ export async function seedDatabase(): Promise<void> {
     },
     {
       name: "Samsung Washing Machine",
-      assetId: "AST-00003",
+      assetId: "AST-0003",
       category: "Washing Machine",
       brand: "Samsung",
       model: "WA70N4422",
@@ -105,7 +106,7 @@ export async function seedDatabase(): Promise<void> {
     },
     {
       name: "Sony Bravia TV",
-      assetId: "AST-00004",
+      assetId: "AST-0004",
       category: "Television",
       brand: "Sony",
       model: "Bravia KD-55X74",
@@ -122,7 +123,7 @@ export async function seedDatabase(): Promise<void> {
     },
     {
       name: "Kent Water Purifier",
-      assetId: "AST-00005",
+      assetId: "AST-0005",
       category: "Water Purifier",
       brand: "Kent",
       model: "Grand Plus",
@@ -139,7 +140,7 @@ export async function seedDatabase(): Promise<void> {
     },
     {
       name: "Havells Water Heater",
-      assetId: "AST-00006",
+      assetId: "AST-0006",
       category: "Water Heater",
       brand: "Havells",
       model: "Instanio 3KW",
@@ -242,6 +243,49 @@ export async function seedDatabase(): Promise<void> {
     },
   ]);
 
-  console.log("[seed] Demo data seeded: 1 house, 5 rooms, 6 assets, 8 service records");
+  const ac = byName["LG Split AC"];
+  const washer = byName["Samsung Washing Machine"];
+  const purifier = byName["Kent Water Purifier"];
+
+  await ServiceOrder.create([
+    {
+      userId: user._id,
+      serviceOrderNumber: "SO-0001",
+      assetId: ac._id,
+      houseId: ac.houseId,
+      locationId: ac.locationId,
+      requestType: "Repair",
+      priority: "High",
+      requestedDate: daysFromNow(-1),
+      description: "AC is not cooling properly.",
+      status: "Open",
+    },
+    {
+      userId: user._id,
+      serviceOrderNumber: "SO-0002",
+      assetId: washer._id,
+      houseId: washer.houseId,
+      locationId: washer.locationId,
+      requestType: "Preventive Maintenance",
+      priority: "Medium",
+      requestedDate: daysFromNow(-3),
+      description: "Scheduled maintenance for Samsung Washing Machine",
+      status: "In Progress",
+    },
+    {
+      userId: user._id,
+      serviceOrderNumber: "SO-0003",
+      assetId: purifier._id,
+      houseId: purifier.houseId,
+      locationId: purifier.locationId,
+      requestType: "Part Replacement",
+      priority: "Medium",
+      requestedDate: daysFromNow(-15),
+      description: "Replace RO membrane and pre-filter.",
+      status: "Completed",
+    },
+  ]);
+
+  console.log("[seed] Demo data seeded: 1 house, 5 rooms, 6 assets, 8 service records, 3 service orders");
   console.log(`[seed] Demo login -> email: ${env.demoEmail}  password: ${env.demoPassword}`);
 }

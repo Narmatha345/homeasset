@@ -3,6 +3,7 @@ import { House } from "../models/House";
 import { Location } from "../models/Location";
 import { Asset } from "../models/Asset";
 import { ServiceRecord } from "../models/ServiceRecord";
+import { ServiceOrder } from "../models/ServiceOrder";
 import { ApiError } from "../utils/ApiError";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -46,6 +47,7 @@ export const deleteHouse = asyncHandler(async (req: Request, res: Response) => {
   const assetIds = assets.map((a) => a._id);
 
   await ServiceRecord.deleteMany({ assetId: { $in: assetIds } });
+  await ServiceOrder.deleteMany({ houseId: house._id });
   await Asset.deleteMany({ houseId: house._id });
   await Location.deleteMany({ houseId: house._id });
 

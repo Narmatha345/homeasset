@@ -3,23 +3,21 @@ import { Asset } from "../models/Asset";
 import { House } from "../models/House";
 import { Location } from "../models/Location";
 import { ServiceRecord } from "../models/ServiceRecord";
+import { ServiceOrder } from "../models/ServiceOrder";
 import { ApiError } from "../utils/ApiError";
 import { asyncHandler } from "../utils/asyncHandler";
 import { getMaintenanceStatus } from "../services/maintenanceStatus";
-
-function nextAssetId(seq: number): string {
-  return `AST-${String(seq).padStart(5, "0")}`;
-}
+import { getNextSequence } from "../utils/sequenceId";
+import { calculateNextServiceDate } from "../utils/maintenanceDate";
 
 export async function generateAssetId(): Promise<string> {
-  const count = await Asset.countDocuments();
-  let seq = count + 1;
-  let candidate = nextAssetId(seq);
-  while (await Asset.exists({ assetId: candidate })) {
-    seq += 1;
-    candidate = nextAssetId(seq);
+  const seedCount = await Asset.countDocuments();
+  // Retry in the rare case a legacy/manually-inserted asset already holds the generated number.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = await getNextSequence("asset", "AST", 4, seedCount);
+    if (!(await Asset.exists({ assetId: candidate }))) return candidate;
   }
-  return candidate;
+  throw ApiError.conflict("Could not generate a unique asset number, please try again");
 }
 
 export const listAssets = asyncHandler(async (req: Request, res: Response) => {
@@ -68,18 +66,29 @@ async function assertOwnership(houseId: string, locationId: string, userId?: str
 
 export const createAsset = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as Record<string, unknown>;
-  const { name, category, houseId, locationId } = body as Record<string, string>;
+  const { name, category, brand, houseId, locationId } = body as Record<string, string>;
 
-  if (!name || !category || !houseId || !locationId) {
-    throw ApiError.badRequest("Asset name, category, house and room are required");
+  if (!name || !category || !brand || !houseId || !locationId) {
+    throw ApiError.badRequest("Asset name, category, brand, house and room are required");
   }
   await assertOwnership(houseId, locationId, req.userId);
 
-  const assetId = (body.assetId as string) || (await generateAssetId());
-  const existing = await Asset.findOne({ assetId });
-  if (existing) throw ApiError.conflict(`Asset ID ${assetId} is already in use`);
+  const assetId = await generateAssetId();
+  // Asset numbers are always server-generated — ignore any client-supplied value.
+  const { assetId: _ignored, ...rest } = body;
+  const maintenanceFrequency = (rest.maintenanceFrequency as string) || "Every 6 Months";
+  const nextServiceDate = calculateNextServiceDate(
+    rest.lastServiceDate as string | undefined,
+    maintenanceFrequency,
+    rest.customFrequencyDays as number | undefined
+  );
 
-  const asset = await Asset.create({ ...body, assetId, userId: req.userId });
+  const asset = await Asset.create({
+    ...rest,
+    assetId,
+    userId: req.userId,
+    nextServiceDate: nextServiceDate ?? rest.nextServiceDate,
+  });
   res.status(201).json({ asset });
 });
 
@@ -92,7 +101,17 @@ export const updateAsset = asyncHandler(async (req: Request, res: Response) => {
   const locationId = (body.locationId as string) || String(asset.locationId);
   await assertOwnership(houseId, locationId, req.userId);
 
-  Object.assign(asset, body);
+  // Asset numbers are always server-generated — never let clients change it after creation.
+  const { assetId: _ignored, ...rest } = body;
+  Object.assign(asset, rest);
+
+  const nextServiceDate = calculateNextServiceDate(
+    asset.lastServiceDate,
+    asset.maintenanceFrequency,
+    asset.customFrequencyDays
+  );
+  if (nextServiceDate) asset.nextServiceDate = nextServiceDate;
+
   await asset.save();
   res.json({ asset });
 });
@@ -101,6 +120,7 @@ export const deleteAsset = asyncHandler(async (req: Request, res: Response) => {
   const asset = await Asset.findOneAndDelete({ _id: req.params.id, userId: req.userId });
   if (!asset) throw ApiError.notFound("Asset not found");
   await ServiceRecord.deleteMany({ assetId: asset._id });
+  await ServiceOrder.deleteMany({ assetId: asset._id });
   res.json({ message: "Asset deleted" });
 });
 

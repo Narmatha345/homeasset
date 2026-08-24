@@ -2,10 +2,10 @@ import { NavLink } from "react-router-dom";
 import clsx from "clsx";
 import {
   LayoutDashboard,
-  Home,
   MapPinned,
   Boxes,
   Wrench,
+  ClipboardList,
   CalendarDays,
   History,
   Settings,
@@ -15,10 +15,10 @@ import {
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/houses", label: "Houses", icon: Home },
   { to: "/locations", label: "Locations", icon: MapPinned },
   { to: "/assets", label: "Assets", icon: Boxes },
   { to: "/maintenance", label: "Maintenance", icon: Wrench },
+  { to: "/service-orders", label: "Service Orders", icon: ClipboardList },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/service-history", label: "Service History", icon: History },
   { to: "/settings", label: "Settings", icon: Settings },

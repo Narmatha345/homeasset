@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Pencil, Trash2, Plus, MapPin, Wrench, Tag, Calendar } from "lucide-react";
+import { ChevronRight, Pencil, Trash2, Plus, ClipboardList, Wrench, Tag, Calendar } from "lucide-react";
 import { assetsApi } from "../api/assetsApi";
 import { servicesApi, type ServiceInput } from "../api/servicesApi";
 import type { Asset, ServiceRecord } from "../types";
@@ -83,9 +83,17 @@ export function AssetDetails() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Link to="/assets" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="h-4 w-4" /> Back to Assets
-      </Link>
+      <nav className="flex items-center flex-wrap gap-1 text-sm text-slate-500">
+        <Link to="/locations" className="hover:text-slate-700">
+          Locations
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+        <span>{houseName}</span>
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+        <span>{locationName}</span>
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-slate-900 font-medium">{asset.name}</span>
+      </nav>
 
       <Card className="p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -94,12 +102,12 @@ export function AssetDetails() {
               <h1 className="text-xl font-semibold text-slate-900">{asset.name}</h1>
               <AssetStatusBadge status={asset.status} />
             </div>
-            <p className="text-sm text-slate-500 mt-1">Asset ID: {asset.assetId}</p>
-            <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" /> {houseName} / {locationName}
-            </p>
+            <p className="text-sm text-slate-500 mt-1">Asset Number: {asset.assetId}</p>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            <Button size="sm" onClick={() => navigate(`/service-orders/new?assetId=${asset._id}`)}>
+              <ClipboardList className="h-4 w-4" /> Create Service Order
+            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate(`/assets/${asset._id}/edit`)}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>

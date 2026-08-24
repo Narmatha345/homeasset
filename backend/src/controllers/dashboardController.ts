@@ -1,22 +1,16 @@
 import { Request, Response } from "express";
 import { Asset } from "../models/Asset";
 import { ServiceRecord } from "../models/ServiceRecord";
+import { ServiceOrder } from "../models/ServiceOrder";
 import { asyncHandler } from "../utils/asyncHandler";
-import { getMaintenanceStatus, getMaintenancePriority } from "../services/maintenanceStatus";
+import { getMaintenanceStatus } from "../services/maintenanceStatus";
+import { buildMaintenanceItems, filterMaintenanceItems } from "../services/maintenanceQuery";
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
 function endOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-}
-function endOfWeek(d: Date) {
-  const day = d.getDay();
-  const diff = 6 - day;
-  const end = new Date(d);
-  end.setDate(d.getDate() + diff);
-  end.setHours(23, 59, 59, 999);
-  return end;
 }
 
 export const getSummary = asyncHandler(async (req: Request, res: Response) => {
@@ -32,41 +26,35 @@ export const getSummary = asyncHandler(async (req: Request, res: Response) => {
   }).length;
   const overdueServices = assets.filter((a) => getMaintenanceStatus(a.nextServiceDate, now) === "Overdue").length;
 
-  res.json({ totalAssets, activeAssets, servicesDueThisMonth, overdueServices });
+  const [openServiceOrders, inProgressServiceOrders, completedServiceOrders] = await Promise.all([
+    ServiceOrder.countDocuments({ userId: req.userId, status: { $in: ["Open", "Assigned"] } }),
+    ServiceOrder.countDocuments({ userId: req.userId, status: { $in: ["In Progress", "On Hold"] } }),
+    ServiceOrder.countDocuments({ userId: req.userId, status: "Completed" }),
+  ]);
+
+  res.json({
+    totalAssets,
+    activeAssets,
+    servicesDueThisMonth,
+    overdueServices,
+    openServiceOrders,
+    inProgressServiceOrders,
+    completedServiceOrders,
+  });
 });
 
 export const getUpcomingMaintenance = asyncHandler(async (req: Request, res: Response) => {
   const { range } = req.query as { range?: string };
-  const now = new Date();
+  const items = await buildMaintenanceItems(req.userId);
+  res.json({ items: filterMaintenanceItems(items, range) });
+});
 
-  const assets = await Asset.find({ userId: req.userId })
-    .populate("locationId", "name")
-    .populate("houseId", "name")
-    .sort({ nextServiceDate: 1 });
-
-  let items = assets
-    .filter((a) => !!a.nextServiceDate)
-    .map((a) => ({
-      assetId: a._id,
-      assetName: a.name,
-      assetCode: a.assetId,
-      location: (a.locationId as unknown as { name?: string })?.name || "Unassigned",
-      house: (a.houseId as unknown as { name?: string })?.name || "",
-      maintenanceType: a.maintenanceFrequency,
-      dueDate: a.nextServiceDate,
-      status: getMaintenanceStatus(a.nextServiceDate, now),
-      priority: getMaintenancePriority(a.nextServiceDate, now),
-    }));
-
-  if (range === "week") {
-    items = items.filter((i) => new Date(i.dueDate as Date) <= endOfWeek(now) && new Date(i.dueDate as Date) >= now);
-  } else if (range === "month") {
-    items = items.filter((i) => new Date(i.dueDate as Date) <= endOfMonth(now) && new Date(i.dueDate as Date) >= startOfMonth(now));
-  } else if (range === "overdue") {
-    items = items.filter((i) => i.status === "Overdue");
-  }
-
-  res.json({ items });
+export const getRecentServiceOrders = asyncHandler(async (req: Request, res: Response) => {
+  const orders = await ServiceOrder.find({ userId: req.userId })
+    .populate({ path: "assetId", select: "name assetId" })
+    .sort({ createdAt: -1 })
+    .limit(5);
+  res.json({ serviceOrders: orders });
 });
 
 export const getRecentlyServiced = asyncHandler(async (req: Request, res: Response) => {

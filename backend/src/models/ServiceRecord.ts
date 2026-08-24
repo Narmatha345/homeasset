@@ -13,6 +13,7 @@ export type ServiceType = (typeof SERVICE_TYPES)[number];
 export interface IServiceRecord extends Document {
   _id: Types.ObjectId;
   assetId: Types.ObjectId;
+  serviceOrderId?: Types.ObjectId;
   userId: Types.ObjectId;
   serviceDate: Date;
   serviceType: ServiceType;
@@ -29,6 +30,7 @@ export interface IServiceRecord extends Document {
 const serviceRecordSchema = new Schema<IServiceRecord>(
   {
     assetId: { type: Schema.Types.ObjectId, ref: "Asset", required: true, index: true },
+    serviceOrderId: { type: Schema.Types.ObjectId, ref: "ServiceOrder", index: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     serviceDate: { type: Date, required: true },
     serviceType: { type: String, enum: SERVICE_TYPES, required: true },

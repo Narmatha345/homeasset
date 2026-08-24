@@ -25,3 +25,17 @@ export const SERVICE_TYPES = [
 ] as const;
 
 export const MAINTENANCE_STATUSES = ["Overdue", "Due Soon", "Scheduled", "Upcoming"] as const;
+
+export const REQUEST_TYPES = [
+  "Repair",
+  "Preventive Maintenance",
+  "Inspection",
+  "Cleaning",
+  "Part Replacement",
+  "Emergency",
+  "Other",
+] as const;
+
+export const SERVICE_ORDER_PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
+
+export const SERVICE_ORDER_STATUSES = ["Open", "Assigned", "In Progress", "On Hold", "Completed", "Cancelled"] as const;

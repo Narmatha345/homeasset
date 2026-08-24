@@ -1,22 +1,28 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ScanLine } from "lucide-react";
 import { assetsApi, type AssetInput } from "../api/assetsApi";
 import { housesApi } from "../api/housesApi";
 import { locationsApi } from "../api/locationsApi";
+import { brandsApi } from "../api/brandsApi";
 import type { House, Location, AssetStatus, MaintenanceFrequency } from "../types";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Field, Input, Select, Textarea } from "../components/ui/FormField";
 import { Spinner } from "../components/ui/Spinner";
 import { ErrorState } from "../components/ui/ErrorState";
+import { HelpTooltip } from "../components/ui/HelpTooltip";
+import { InfoNote } from "../components/ui/InfoNote";
+import { BarcodeScannerModal } from "../components/assets/BarcodeScannerModal";
 import { useToast } from "../context/ToastContext";
 import { apiErrorMessage } from "../api/client";
 import { ASSET_CATEGORIES, ASSET_STATUSES, MAINTENANCE_FREQUENCIES } from "../utils/constants";
+import { calculateNextServiceDate } from "../utils/maintenanceDate";
+
+const OTHER_BRAND = "__other__";
 
 const emptyForm: AssetInput = {
   name: "",
-  assetId: "",
   category: "",
   brand: "",
   model: "",
@@ -28,6 +34,7 @@ const emptyForm: AssetInput = {
   purchasePrice: undefined,
   warrantyExpiry: "",
   maintenanceFrequency: "Every 6 Months",
+  customFrequencyDays: undefined,
   lastServiceDate: "",
   nextServiceDate: "",
   notes: "",
@@ -47,6 +54,7 @@ export function AddEditAsset() {
 
   const [houses, setHouses] = useState<House[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [assetNumber, setAssetNumber] = useState("");
   const [form, setForm] = useState<AssetInput>({
     ...emptyForm,
     houseId: searchParams.get("houseId") || "",
@@ -57,6 +65,10 @@ export function AddEditAsset() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const [brandOptions, setBrandOptions] = useState<string[]>([]);
+  const [brandMode, setBrandMode] = useState<"select" | "custom">("select");
+  const [scannerOpen, setScannerOpen] = useState(false);
+
   useEffect(() => {
     setLoading(true);
     setError("");
@@ -64,9 +76,9 @@ export function AddEditAsset() {
     if (isEdit && id) {
       loaders.push(
         assetsApi.get(id).then((asset) => {
+          setAssetNumber(asset.assetId);
           setForm({
             name: asset.name,
-            assetId: asset.assetId,
             category: asset.category,
             brand: asset.brand || "",
             model: asset.model || "",
@@ -78,6 +90,7 @@ export function AddEditAsset() {
             purchasePrice: asset.purchasePrice,
             warrantyExpiry: toDateInput(asset.warrantyExpiry),
             maintenanceFrequency: asset.maintenanceFrequency,
+            customFrequencyDays: asset.customFrequencyDays,
             lastServiceDate: toDateInput(asset.lastServiceDate),
             nextServiceDate: toDateInput(asset.nextServiceDate),
             notes: asset.notes || "",
@@ -91,14 +104,70 @@ export function AddEditAsset() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Brand list depends on the selected category — fetched from a shared backend config, never hardcoded here.
+  useEffect(() => {
+    if (!form.category) {
+      setBrandOptions([]);
+      return;
+    }
+    let cancelled = false;
+    brandsApi
+      .get(form.category)
+      .then((brands) => {
+        if (!cancelled) setBrandOptions(brands);
+      })
+      .catch(() => {
+        if (!cancelled) setBrandOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.category]);
+
+  useEffect(() => {
+    if (brandOptions.length === 0) {
+      setBrandMode("custom");
+    } else if (form.brand && !brandOptions.includes(form.brand)) {
+      setBrandMode("custom");
+    } else {
+      setBrandMode("select");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandOptions]);
+
   const roomOptions = useMemo(() => locations.filter((l) => l.houseId === form.houseId), [locations, form.houseId]);
 
+  const isCustomFrequency = form.maintenanceFrequency === "Custom";
+  const isAutoCalculated = !isCustomFrequency || !!form.customFrequencyDays;
+  const computedNextServiceDate = useMemo(
+    () => calculateNextServiceDate(form.lastServiceDate, form.maintenanceFrequency, form.customFrequencyDays),
+    [form.lastServiceDate, form.maintenanceFrequency, form.customFrequencyDays]
+  );
+
+  useEffect(() => {
+    if (isAutoCalculated) {
+      setForm((f) => (f.nextServiceDate === computedNextServiceDate ? f : { ...f, nextServiceDate: computedNextServiceDate }));
+    }
+  }, [isAutoCalculated, computedNextServiceDate]);
+
   const setField = <K extends keyof AssetInput>(key: K, value: AssetInput[K]) => setForm((f) => ({ ...f, [key]: value }));
+
+  const handleCategoryChange = (value: string) => {
+    setField("category", value);
+    setField("brand", "");
+  };
+
+  const handleScan = (text: string) => {
+    setField("serialNumber", text);
+    setScannerOpen(false);
+    showToast("Code scanned. Please review the Serial Number and fill in any remaining details.");
+  };
 
   const validate = (): boolean => {
     const nextErrors: Partial<Record<keyof AssetInput, string>> = {};
     if (!form.name.trim()) nextErrors.name = "Asset name is required";
     if (!form.category.trim()) nextErrors.category = "Category is required";
+    if (!form.brand.trim()) nextErrors.brand = "Brand is required";
     if (!form.houseId) nextErrors.houseId = "House is required";
     if (!form.locationId) nextErrors.locationId = "Room is required";
     if (form.purchasePrice !== undefined && form.purchasePrice < 0) nextErrors.purchasePrice = "Must be a positive number";
@@ -114,7 +183,6 @@ export function AddEditAsset() {
     try {
       const payload: AssetInput = {
         ...form,
-        assetId: form.assetId || undefined,
         purchaseDate: form.purchaseDate || undefined,
         warrantyExpiry: form.warrantyExpiry || undefined,
         lastServiceDate: form.lastServiceDate || undefined,
@@ -126,7 +194,7 @@ export function AddEditAsset() {
         navigate(`/assets/${id}`);
       } else {
         const created = await assetsApi.create(payload);
-        showToast("Asset saved successfully");
+        showToast(`Asset saved successfully. Asset Number: ${created.assetId}`);
         navigate(`/assets/${created._id}`);
       }
     } catch (err) {
@@ -146,9 +214,18 @@ export function AddEditAsset() {
       </Link>
 
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">{isEdit ? "Edit Asset" : "Add Asset"}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Fill in the details below to {isEdit ? "update this" : "register a new"} asset.</p>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-xl font-semibold text-slate-900">{isEdit ? "Edit Asset" : "Add Asset"}</h1>
+          <HelpTooltip text="An asset is a device or equipment in your home, such as an AC, refrigerator, TV or washing machine." />
+        </div>
+        {isEdit ? (
+          <p className="text-sm text-slate-500 mt-0.5">Asset Number: {assetNumber}</p>
+        ) : (
+          <p className="text-sm text-slate-500 mt-0.5">Only a few fields are required. Additional information can be added later.</p>
+        )}
       </div>
+
+      {!isEdit && <InfoNote>Your Asset Number will be generated automatically after you save (e.g. AST-0007).</InfoNote>}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
@@ -159,11 +236,8 @@ export function AddEditAsset() {
             <Field label="Asset Name" required error={errors.name}>
               <Input value={form.name} onChange={(e) => setField("name", e.target.value)} placeholder="LG Split AC" invalid={!!errors.name} />
             </Field>
-            <Field label="Asset ID" hint="Leave blank to auto-generate (e.g. AST-00001)">
-              <Input value={form.assetId} onChange={(e) => setField("assetId", e.target.value)} placeholder="AST-00001" />
-            </Field>
             <Field label="Category" required error={errors.category}>
-              <Select value={form.category} onChange={(e) => setField("category", e.target.value)} invalid={!!errors.category}>
+              <Select value={form.category} onChange={(e) => handleCategoryChange(e.target.value)} invalid={!!errors.category}>
                 <option value="">Select category</option>
                 {ASSET_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -171,6 +245,45 @@ export function AddEditAsset() {
                   </option>
                 ))}
               </Select>
+            </Field>
+            <Field label="Brand" required error={errors.brand}>
+              {brandMode === "select" ? (
+                <Select
+                  value={form.brand}
+                  onChange={(e) => {
+                    if (e.target.value === OTHER_BRAND) {
+                      setBrandMode("custom");
+                      setField("brand", "");
+                    } else {
+                      setField("brand", e.target.value);
+                    }
+                  }}
+                  invalid={!!errors.brand}
+                  disabled={!form.category}
+                >
+                  <option value="">{form.category ? "Select brand" : "Select a category first"}</option>
+                  {brandOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                  <option value={OTHER_BRAND}>Other (type manually)</option>
+                </Select>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={form.brand}
+                    onChange={(e) => setField("brand", e.target.value)}
+                    placeholder="Enter brand name"
+                    invalid={!!errors.brand}
+                  />
+                  {brandOptions.length > 0 && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => setBrandMode("select")}>
+                      Choose from list
+                    </Button>
+                  )}
+                </div>
+              )}
             </Field>
             <Field label="Status">
               <Select value={form.status} onChange={(e) => setField("status", e.target.value as AssetStatus)}>
@@ -181,21 +294,24 @@ export function AddEditAsset() {
                 ))}
               </Select>
             </Field>
-            <Field label="Brand">
-              <Input value={form.brand} onChange={(e) => setField("brand", e.target.value)} placeholder="LG" />
-            </Field>
-            <Field label="Model">
+            <Field label="Model (Optional)">
               <Input value={form.model} onChange={(e) => setField("model", e.target.value)} placeholder="LS-Q18YNZA" />
             </Field>
-            <Field label="Serial Number">
+            <Field label="Serial Number (Optional)">
               <Input value={form.serialNumber} onChange={(e) => setField("serialNumber", e.target.value)} placeholder="LG-AC-88213" />
             </Field>
+            <div className="sm:col-span-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setScannerOpen(true)}>
+                <ScanLine className="h-4 w-4" /> Scan QR / Barcode
+              </Button>
+              <p className="text-xs text-slate-400 mt-1.5">Scan the sticker on the appliance to fill in the Serial Number automatically.</p>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Purchase Information</CardTitle>
+            <CardTitle>Purchase Information (Optional)</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Purchase Date">
@@ -259,7 +375,10 @@ export function AddEditAsset() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Maintenance</CardTitle>
+            <CardTitle className="flex items-center gap-1.5">
+              Maintenance
+              <HelpTooltip text="Set how often this asset should be serviced. The Next Service Date is calculated for you." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Maintenance Frequency">
@@ -274,12 +393,32 @@ export function AddEditAsset() {
                 ))}
               </Select>
             </Field>
-            <div />
+            {isCustomFrequency ? (
+              <Field label="Custom Interval (days)" hint="Optional. Leave blank to set Next Service Date manually.">
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.customFrequencyDays ?? ""}
+                  onChange={(e) => setField("customFrequencyDays", e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="e.g. 45"
+                />
+              </Field>
+            ) : (
+              <div />
+            )}
             <Field label="Last Service Date">
               <Input type="date" value={form.lastServiceDate} onChange={(e) => setField("lastServiceDate", e.target.value)} />
             </Field>
-            <Field label="Next Service Date">
-              <Input type="date" value={form.nextServiceDate} onChange={(e) => setField("nextServiceDate", e.target.value)} />
+            <Field
+              label={isAutoCalculated ? "Next Service Date (Auto-calculated)" : "Next Service Date"}
+              hint={isAutoCalculated && !form.nextServiceDate ? "Enter a Last Service Date to calculate this automatically." : undefined}
+            >
+              <Input
+                type="date"
+                value={form.nextServiceDate}
+                disabled={isAutoCalculated}
+                onChange={(e) => setField("nextServiceDate", e.target.value)}
+              />
             </Field>
             <div className="sm:col-span-2">
               <Field label="Notes">
@@ -298,6 +437,8 @@ export function AddEditAsset() {
           </Button>
         </div>
       </form>
+
+      <BarcodeScannerModal open={scannerOpen} onClose={() => setScannerOpen(false)} onScan={handleScan} />
     </div>
   );
 }

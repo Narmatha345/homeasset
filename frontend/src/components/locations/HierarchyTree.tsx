@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Home, DoorOpen, Boxes, Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
-import type { LocationTreeNode, Location } from "../../types";
+import type { LocationTreeNode, Location, House } from "../../types";
 import { Card } from "../ui/Card";
 import { AssetStatusBadge } from "../ui/StatusBadge";
 
@@ -10,9 +10,12 @@ interface HierarchyTreeProps {
   onAddRoom?: (houseId: string) => void;
   onEditRoom?: (location: Location) => void;
   onDeleteRoom?: (location: Location) => void;
+  onEditHouse?: (house: House) => void;
+  onDeleteHouse?: (house: House) => void;
+  onAddAsset?: (houseId: string, locationId: string) => void;
 }
 
-export function HierarchyTree({ tree, onAddRoom, onEditRoom, onDeleteRoom }: HierarchyTreeProps) {
+export function HierarchyTree({ tree, onAddRoom, onEditRoom, onDeleteRoom, onEditHouse, onDeleteHouse, onAddAsset }: HierarchyTreeProps) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -32,14 +35,34 @@ export function HierarchyTree({ tree, onAddRoom, onEditRoom, onDeleteRoom }: Hie
                 </p>
               </div>
             </div>
-            {onAddRoom && (
-              <button
-                onClick={() => onAddRoom(house._id)}
-                className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium hover:bg-white/20"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Room
-              </button>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onAddRoom && (
+                <button
+                  onClick={() => onAddRoom(house._id)}
+                  className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium hover:bg-white/20"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Room
+                </button>
+              )}
+              {onEditHouse && (
+                <button
+                  onClick={() => onEditHouse(house)}
+                  className="rounded-md p-1.5 text-slate-300 hover:bg-white/10 hover:text-white"
+                  aria-label="Edit house"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {onDeleteHouse && (
+                <button
+                  onClick={() => onDeleteHouse(house)}
+                  className="rounded-md p-1.5 text-slate-300 hover:bg-red-500/20 hover:text-red-300"
+                  aria-label="Delete house"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="divide-y divide-slate-100">
@@ -64,8 +87,16 @@ export function HierarchyTree({ tree, onAddRoom, onEditRoom, onDeleteRoom }: Hie
                         ({assets.length} asset{assets.length === 1 ? "" : "s"})
                       </span>
                     </button>
-                    {(onEditRoom || onDeleteRoom) && (
+                    {(onAddAsset || onEditRoom || onDeleteRoom) && (
                       <div className="flex items-center gap-1 shrink-0">
+                        {onAddAsset && (
+                          <button
+                            onClick={() => onAddAsset(house._id, location._id)}
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Add Asset
+                          </button>
+                        )}
                         {onEditRoom && (
                           <button
                             onClick={() => onEditRoom(location)}

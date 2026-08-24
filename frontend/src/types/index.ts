@@ -44,6 +44,7 @@ export interface Asset {
   purchasePrice?: number;
   warrantyExpiry?: string;
   maintenanceFrequency: MaintenanceFrequency;
+  customFrequencyDays?: number;
   lastServiceDate?: string;
   nextServiceDate?: string;
   notes?: string;
@@ -56,6 +57,7 @@ export type ServiceType = "General Maintenance" | "Cleaning" | "Inspection" | "R
 export interface ServiceRecord {
   _id: string;
   assetId: string | Asset;
+  serviceOrderId?: string;
   userId: string;
   serviceDate: string;
   serviceType: ServiceType;
@@ -65,6 +67,36 @@ export interface ServiceRecord {
   partsReplaced?: string;
   nextServiceDate?: string;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RequestType =
+  | "Repair"
+  | "Preventive Maintenance"
+  | "Inspection"
+  | "Cleaning"
+  | "Part Replacement"
+  | "Emergency"
+  | "Other";
+
+export type ServiceOrderPriority = "Low" | "Medium" | "High" | "Critical";
+
+export type ServiceOrderStatus = "Open" | "Assigned" | "In Progress" | "On Hold" | "Completed" | "Cancelled";
+
+export interface ServiceOrder {
+  _id: string;
+  userId: string;
+  serviceOrderNumber: string;
+  assetId: string | { _id: string; name: string; assetId: string };
+  houseId: string | { _id: string; name: string };
+  locationId: string | { _id: string; name: string };
+  requestType: RequestType;
+  priority: ServiceOrderPriority;
+  requestedDate: string;
+  description: string;
+  notes?: string;
+  status: ServiceOrderStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,6 +121,9 @@ export interface DashboardSummary {
   activeAssets: number;
   servicesDueThisMonth: number;
   overdueServices: number;
+  openServiceOrders: number;
+  inProgressServiceOrders: number;
+  completedServiceOrders: number;
 }
 
 export interface AppNotification {

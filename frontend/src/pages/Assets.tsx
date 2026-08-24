@@ -12,6 +12,7 @@ import { Table, type Column } from "../components/ui/Table";
 import { Spinner } from "../components/ui/Spinner";
 import { ErrorState } from "../components/ui/ErrorState";
 import { EmptyState } from "../components/ui/EmptyState";
+import { HelpTooltip } from "../components/ui/HelpTooltip";
 import { AssetStatusBadge, MaintenanceStatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { useConfirm } from "../hooks/useConfirm";
@@ -86,6 +87,16 @@ export function Assets() {
     [locations, houseFilter]
   );
 
+  const hasActiveFilters = !!(
+    debouncedSearch ||
+    houseFilter ||
+    roomFilter ||
+    categoryFilter ||
+    statusFilter ||
+    warrantyFilter ||
+    maintenanceFilter
+  );
+
   const handleDelete = (asset: Asset) => {
     confirm({
       title: "Delete asset?",
@@ -150,7 +161,10 @@ export function Assets() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Assets</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-xl font-semibold text-slate-900">Assets</h1>
+            <HelpTooltip text="Assets are the devices and equipment in your home, such as an AC, refrigerator, TV or washing machine." />
+          </div>
           <p className="text-sm text-slate-500 mt-0.5">All equipment across your homes.</p>
         </div>
         <Button onClick={() => navigate("/assets/new")}>
@@ -251,8 +265,8 @@ export function Assets() {
         ) : assets.length === 0 ? (
           <EmptyState
             icon={<Boxes className="h-6 w-6" />}
-            title="No assets found"
-            description="Try adjusting your filters, or add a new asset."
+            title={hasActiveFilters ? "No assets found" : "No assets yet"}
+            description={hasActiveFilters ? "Try adjusting your filters." : "Add your first appliance to start tracking maintenance."}
             actionLabel="Add Asset"
             onAction={() => navigate("/assets/new")}
           />

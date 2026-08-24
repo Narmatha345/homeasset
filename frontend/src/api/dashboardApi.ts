@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { DashboardSummary, UpcomingMaintenanceItem, ServiceRecord, AppNotification } from "../types";
+import type { DashboardSummary, UpcomingMaintenanceItem, ServiceRecord, ServiceOrder, AppNotification } from "../types";
 
 export const dashboardApi = {
   summary: () => apiClient.get<DashboardSummary>("/dashboard/summary").then((r) => r.data),
@@ -9,6 +9,8 @@ export const dashboardApi = {
       .then((r) => r.data.items),
   recentlyServiced: () =>
     apiClient.get<{ items: ServiceRecord[] }>("/dashboard/recently-serviced").then((r) => r.data.items),
+  recentServiceOrders: () =>
+    apiClient.get<{ serviceOrders: ServiceOrder[] }>("/dashboard/recent-service-orders").then((r) => r.data.serviceOrders),
   assetsByLocation: () =>
     apiClient
       .get<{ data: { location: string; count: number }[] }>("/dashboard/assets-by-location")

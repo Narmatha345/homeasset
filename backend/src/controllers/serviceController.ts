@@ -3,6 +3,7 @@ import { ServiceRecord } from "../models/ServiceRecord";
 import { Asset } from "../models/Asset";
 import { ApiError } from "../utils/ApiError";
 import { asyncHandler } from "../utils/asyncHandler";
+import { applyServiceToAsset } from "../services/completeService";
 
 export const listServices = asyncHandler(async (req: Request, res: Response) => {
   const { assetId, locationId, serviceType, from, to, search } = req.query as Record<string, string>;
@@ -62,12 +63,7 @@ export const createService = asyncHandler(async (req: Request, res: Response) =>
   if (!asset) throw ApiError.badRequest("Invalid asset");
 
   const record = await ServiceRecord.create({ ...body, userId: req.userId });
-
-  asset.lastServiceDate = record.serviceDate;
-  if (record.nextServiceDate) {
-    asset.nextServiceDate = record.nextServiceDate;
-  }
-  await asset.save();
+  await applyServiceToAsset(asset, record.serviceDate, record.nextServiceDate);
 
   res.status(201).json({ service: record, asset });
 });
